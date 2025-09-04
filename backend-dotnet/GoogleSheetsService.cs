@@ -675,4 +675,157 @@ public class GoogleSheetsService
 
         return null;
     }
+
+    // Team Contribution Methods
+    public async Task<TeamContributionResponse> GetTeamContributionAsync(string sprintName)
+    {
+        // 獲取該 Sprint 的所有 Issues
+        var allData = await FetchAndCacheDataAsync();
+        var sprintIssues = allData.Where(row => 
+            row.ContainsKey("sprint") && 
+            row["sprint"]?.ToString() == sprintName).ToList();
+
+        if (!sprintIssues.Any())
+        {
+            throw new ArgumentException($"No issues found for Sprint '{sprintName}'");
+        }
+
+        // 按成員聚合資料
+        var memberContributions = AggregateByMember(sprintIssues);
+        
+        // 分離未指派任務
+        MemberContribution? unassignedContribution = null;
+        if (memberContributions.ContainsKey("未指派"))
+        {
+            unassignedContribution = memberContributions["未指派"];
+            memberContributions.Remove("未指派");
+        }
+
+        var memberList = memberContributions.Values.OrderBy(m => m.MemberName).ToList();
+
+        return new TeamContributionResponse(
+            SprintName: sprintName,
+            MemberContributions: memberList,
+            UnassignedContribution: unassignedContribution,
+            TotalMembers: memberList.Count + (unassignedContribution != null ? 1 : 0),
+            LastUpdated: _cacheTimestamp
+        );
+    }
+
+    private Dictionary<string, MemberContribution> AggregateByMember(List<Dictionary<string, object?>> sprintIssues)
+    {
+        var memberData = new Dictionary<string, Dictionary<string, List<Dictionary<string, object?>>>>();
+        var storyPointsColumn = FindStoryPointsColumn(sprintIssues);
+
+        // 按成員和狀態分組
+        foreach (var issue in sprintIssues)
+        {
+            var assignee = GetAssigneeValue(issue);
+            var status = CategorizeTaskStatus(GetStatusValue(issue));
+
+            if (!memberData.ContainsKey(assignee))
+            {
+                memberData[assignee] = new Dictionary<string, List<Dictionary<string, object?>>>
+                {
+                    ["open"] = new List<Dictionary<string, object?>>(),
+                    ["inProgress"] = new List<Dictionary<string, object?>>(),
+                    ["done"] = new List<Dictionary<string, object?>>()
+                };
+            }
+
+            memberData[assignee][status].Add(issue);
+        }
+
+        // 轉換為 MemberContribution
+        var result = new Dictionary<string, MemberContribution>();
+        foreach (var kvp in memberData)
+        {
+            var memberName = kvp.Key;
+            var tasks = kvp.Value;
+
+            var openTasks = new TaskSummary(
+                Count: tasks["open"].Count,
+                StoryPoints: CalculateTotalStoryPoints(tasks["open"], storyPointsColumn)
+            );
+
+            var inProgressTasks = new TaskSummary(
+                Count: tasks["inProgress"].Count,
+                StoryPoints: CalculateTotalStoryPoints(tasks["inProgress"], storyPointsColumn)
+            );
+
+            var doneTasks = new TaskSummary(
+                Count: tasks["done"].Count,
+                StoryPoints: CalculateTotalStoryPoints(tasks["done"], storyPointsColumn)
+            );
+
+            var totalTasks = openTasks.Count + inProgressTasks.Count + doneTasks.Count;
+            var totalStoryPoints = openTasks.StoryPoints + inProgressTasks.StoryPoints + doneTasks.StoryPoints;
+
+            result[memberName] = new MemberContribution(
+                MemberName: memberName,
+                OpenTasks: openTasks,
+                InProgressTasks: inProgressTasks,
+                DoneTasks: doneTasks,
+                TotalTasks: totalTasks,
+                TotalStoryPoints: totalStoryPoints
+            );
+        }
+
+        return result;
+    }
+
+    private static string GetAssigneeValue(Dictionary<string, object?> row)
+    {
+        // 依序檢查可能的 assignee 欄位
+        var possibleFields = new[] { "assignee", "Assignee", "assigned_to", "member", "owner" };
+        
+        foreach (var field in possibleFields)
+        {
+            if (row.ContainsKey(field))
+            {
+                var value = row[field]?.ToString()?.Trim();
+                if (!string.IsNullOrEmpty(value))
+                {
+                    return value;
+                }
+            }
+        }
+
+        // 如果沒有找到 assignee，嘗試使用其他識別欄位
+        if (row.ContainsKey("TaskTags"))
+        {
+            var taskTags = row["TaskTags"]?.ToString()?.Trim();
+            if (!string.IsNullOrEmpty(taskTags))
+            {
+                // 嘗試從 TaskTags 中提取成員資訊
+                var tags = taskTags.Split(',', ';').Select(t => t.Trim()).ToList();
+                var memberTag = tags.FirstOrDefault(t => t.Contains("@") || t.Contains("member:"));
+                if (memberTag != null)
+                {
+                    return memberTag.Replace("@", "").Replace("member:", "").Trim();
+                }
+            }
+        }
+
+        return "未指派";
+    }
+
+    private static string CategorizeTaskStatus(string status)
+    {
+        var openStatuses = new[] { "Backlog", "Evaluated", "To Do" };
+        var inProgressStatuses = new[] { "In Progress", "Waiting" };
+        var doneStatuses = new[] { "Done", "Ready to Verify", "Resolved" };
+
+        if (openStatuses.Contains(status, StringComparer.OrdinalIgnoreCase))
+            return "open";
+        
+        if (inProgressStatuses.Contains(status, StringComparer.OrdinalIgnoreCase))
+            return "inProgress";
+        
+        if (doneStatuses.Contains(status, StringComparer.OrdinalIgnoreCase))
+            return "done";
+
+        // 預設分類為 open
+        return "open";
+    }
 }
