@@ -243,6 +243,26 @@ app.MapGet(
     }
 );
 
+// US-103: Status Distribution with Bottleneck Detection API endpoint
+app.MapGet(
+    "/api/dashboard/status-distribution/{sprintName?}",
+    async (
+        [FromServices] GoogleSheetsService sheetsService,
+        string? sprintName = null
+    ) =>
+    {
+        try
+        {
+            var result = await sheetsService.GetStatusDistributionWithBottleneckAsync(sprintName);
+            return Results.Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem($"Failed to get status distribution data: {ex.Message}");
+        }
+    }
+);
+
 // Configuration API endpoints
 app.MapGet(
     "/api/config/sheet",

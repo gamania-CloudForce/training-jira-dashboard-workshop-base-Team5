@@ -128,3 +128,20 @@ public record TeamContributionResponse(
     [property: JsonPropertyName("total_members")] int TotalMembers,
     [property: JsonPropertyName("last_updated")] DateTime LastUpdated
 );
+
+// Status Distribution Models for US-103
+public record StatusDistributionData(
+    [property: JsonPropertyName("status")] string Status,
+    [property: JsonPropertyName("count")] int Count,
+    [property: JsonPropertyName("percentage")] double Percentage,
+    [property: JsonPropertyName("is_bottleneck")] bool IsBottleneck
+);
+
+public record StatusDistributionResponse(
+    [property: JsonPropertyName("sprint_name")] string SprintName,
+    [property: JsonPropertyName("status_distributions")] List<StatusDistributionData> StatusDistributions,
+    [property: JsonPropertyName("total_tasks")] int TotalTasks,
+    [property: JsonPropertyName("bottleneck_status")] string? BottleneckStatus,
+    [property: JsonPropertyName("has_unknown_statuses")] bool HasUnknownStatuses,
+    [property: JsonPropertyName("last_updated")] DateTime LastUpdated
+);
