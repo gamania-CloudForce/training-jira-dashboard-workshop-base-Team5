@@ -105,3 +105,26 @@ public record SprintInfo(
     [property: JsonPropertyName("complete_date")] DateTime? CompleteDate,
     [property: JsonPropertyName("goal")] string Goal
 );
+
+// Team Contribution Models
+public record TaskSummary(
+    [property: JsonPropertyName("count")] int Count,
+    [property: JsonPropertyName("story_points")] double StoryPoints
+);
+
+public record MemberContribution(
+    [property: JsonPropertyName("member_name")] string MemberName,
+    [property: JsonPropertyName("open_tasks")] TaskSummary OpenTasks,
+    [property: JsonPropertyName("in_progress_tasks")] TaskSummary InProgressTasks,
+    [property: JsonPropertyName("done_tasks")] TaskSummary DoneTasks,
+    [property: JsonPropertyName("total_tasks")] int TotalTasks,
+    [property: JsonPropertyName("total_story_points")] double TotalStoryPoints
+);
+
+public record TeamContributionResponse(
+    [property: JsonPropertyName("sprint_name")] string SprintName,
+    [property: JsonPropertyName("member_contributions")] List<MemberContribution> MemberContributions,
+    [property: JsonPropertyName("unassigned_contribution")] MemberContribution? UnassignedContribution,
+    [property: JsonPropertyName("total_members")] int TotalMembers,
+    [property: JsonPropertyName("last_updated")] DateTime LastUpdated
+);

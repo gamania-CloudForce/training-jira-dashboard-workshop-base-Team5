@@ -222,6 +222,27 @@ app.MapGet(
     }
 );
 
+// Team Contribution API endpoints
+app.MapGet(
+    "/api/team/contribution/{sprintName}",
+    async (string sprintName, GoogleSheetsService sheetsService) =>
+    {
+        try
+        {
+            var teamContribution = await sheetsService.GetTeamContributionAsync(sprintName);
+            return Results.Ok(teamContribution);
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem($"Failed to get team contribution data: {ex.Message}");
+        }
+    }
+);
+
 // Configuration API endpoints
 app.MapGet(
     "/api/config/sheet",

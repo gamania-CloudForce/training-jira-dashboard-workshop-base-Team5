@@ -24,6 +24,11 @@ import { ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { ChartContainer } from "@/components/ui/chart"
 import { useDashboard } from "@/hooks/use-dashboard"
 import { SprintBurndownContainer } from "@/components/sprint-burndown-container"
+import { MemberContributionCard } from "./member-contribution-card"
+import { useTeamContribution } from "@/hooks/use-team-contribution"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertCircle, RefreshCw } from "lucide-react"
 
 export default function JiraDashboard() {
   const [selectedSprint, setSelectedSprint] = useState<string>('All')
@@ -37,6 +42,16 @@ export default function JiraDashboard() {
     refetch
   } = useDashboard({
     sprint: selectedSprint === 'All' ? undefined : selectedSprint,
+  })
+
+  // 獲取團隊貢獻資料
+  const { 
+    teamData, 
+    loading: teamLoading, 
+    error: teamError, 
+    refetch: refetchTeam 
+  } = useTeamContribution({
+    sprintName: selectedSprint === 'All' ? undefined : selectedSprint
   })
 
   // 定義 Status 的正確順序
@@ -87,7 +102,7 @@ export default function JiraDashboard() {
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-gray-700">Sprint:</label>
             <Select value={selectedSprint} onValueChange={setSelectedSprint}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-[200px]" data-testid="sprint-selector">
                 <SelectValue placeholder="Select Sprint" />
               </SelectTrigger>
               <SelectContent>
@@ -281,6 +296,85 @@ export default function JiraDashboard() {
         {/* Sprint Burndown Section */}
         <div className="grid gap-4 md:gap-8 lg:grid-cols-1 xl:grid-cols-1">
           <SprintBurndownContainer selectedSprint={selectedSprint} />
+        </div>
+
+        {/* Team Contribution Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-700">團隊成員貢獻卡片</h2>
+            {teamData && (
+              <span className="text-sm text-gray-500">
+                共 {teamData.total_members} 位成員
+              </span>
+            )}
+          </div>
+
+          {/* 載入狀態 */}
+          {teamLoading && !teamData && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <Skeleton key={index} className="h-64 w-full" />
+              ))}
+            </div>
+          )}
+
+          {/* 錯誤狀態 */}
+          {teamError && !teamData && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="flex items-center justify-between">
+                <span>無法取得成員資料，請稍後重試</span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={refetchTeam}
+                  className="ml-4"
+                >
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  重新載入
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* 沒有資料 */}
+          {!teamLoading && !teamError && !teamData && selectedSprint !== 'All' && (
+            <div className="text-center text-gray-500 py-8">
+              Sprint "{selectedSprint}" 沒有找到團隊資料
+            </div>
+          )}
+
+          {/* 成員卡片網格 */}
+          {teamData && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* 已指派成員卡片 */}
+              {teamData.member_contributions.map((member) => (
+                <MemberContributionCard
+                  key={member.member_name}
+                  member={member}
+                  sprintName={teamData.sprint_name}
+                  lastUpdated={teamData.last_updated}
+                />
+              ))}
+
+              {/* 未指派任務卡片 */}
+              {teamData.unassigned_contribution && (
+                <MemberContributionCard
+                  member={teamData.unassigned_contribution}
+                  isUnassigned={true}
+                  sprintName={teamData.sprint_name}
+                  lastUpdated={teamData.last_updated}
+                />
+              )}
+            </div>
+          )}
+
+          {/* 提示選擇 Sprint */}
+          {selectedSprint === 'All' && (
+            <div className="text-center text-gray-500 py-8">
+              請選擇一個具體的 Sprint 查看團隊成員貢獻
+            </div>
+          )}
         </div>
 
       </main>
