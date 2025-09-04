@@ -57,11 +57,17 @@ export function CompletionRateCard({ sprintData, className }: CompletionRateCard
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-semibold">Sprint 完成率</CardTitle>
           <Badge 
-            variant={statusConfig.badgeVariant}
             className={statusConfig.badgeClassName}
           >
             <StatusIcon className={`w-3 h-3 mr-1 ${statusConfig.iconColor}`} />
             {statusConfig.label}
+            {/* 警告圖示 - 符合測試案例要求 */}
+            {sprintData.status === 'warning' && (
+              <span className="ml-1" data-testid="warning-icon">⚠️</span>
+            )}
+            {sprintData.status === 'danger' && (
+              <span className="ml-1" data-testid="warning-icon">🚨</span>
+            )}
           </Badge>
         </div>
       </CardHeader>
@@ -76,11 +82,21 @@ export function CompletionRateCard({ sprintData, className }: CompletionRateCard
         <div>
           <div className="flex justify-between items-center mb-2">
             <p className="text-sm text-muted-foreground">整體進度</p>
-            <p className="text-lg font-bold">{sprintData.completion_rate}%</p>
+            <p 
+              className="text-lg font-bold"
+              data-testid="completion-rate"
+              style={{ 
+                color: statusConfig.color.includes('green') ? '#22c55e' :
+                       statusConfig.color.includes('yellow') ? '#eab308' : '#ef4444'
+              }}
+            >
+              {Math.round(sprintData.completion_rate)}% 完成
+            </p>
           </div>
           <div className="relative h-3 w-full overflow-hidden rounded-full bg-secondary">
             <div 
               className="h-full transition-all rounded-full"
+              data-testid="progress-bar"
               style={{ 
                 width: `${sprintData.completion_rate}%`,
                 backgroundColor: statusConfig.color.includes('green') ? '#22c55e' :
@@ -89,6 +105,28 @@ export function CompletionRateCard({ sprintData, className }: CompletionRateCard
             />
           </div>
         </div>
+
+        {/* 進度詳情 - 符合測試案例格式 */}
+        <div 
+          className="text-sm text-muted-foreground"
+          data-testid="progress-details"
+        >
+          已完成: {formatStoryPoints(sprintData.completed_story_points)} SP | 
+          剩餘: {formatStoryPoints(sprintData.remaining_story_points)} SP | 
+          總計: {formatStoryPoints(sprintData.total_story_points)} SP
+        </div>
+
+        {/* 危險狀態警示訊息 - 符合測試案例 TC-001-04 */}
+        {sprintData.status === 'danger' && (
+          <div 
+            className="bg-red-50 border border-red-200 rounded-md p-3 flex items-center gap-2"
+            data-testid="warning-message"
+          >
+            <span className="text-red-600">🚨</span>
+            <span className="text-red-800 font-medium">進度落後</span>
+            <span className="text-red-600 text-sm">- Sprint 進度嚴重落後，需要立即關注</span>
+          </div>
+        )}
 
         {/* 故事點數分解 */}
         <div className="grid grid-cols-3 gap-4 pt-2">

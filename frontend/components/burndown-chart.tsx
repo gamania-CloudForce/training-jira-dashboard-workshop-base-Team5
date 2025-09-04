@@ -116,9 +116,13 @@ export function BurndownChart({ chartData, sprintData, className }: BurndownChar
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={dynamicChartConfig} className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+        <div data-testid="burndown-chart">
+          <ChartContainer config={dynamicChartConfig} className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart 
+                data={chartData} 
+                margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+              >
               <XAxis 
                 dataKey="day" 
                 axisLine={false}
@@ -160,6 +164,7 @@ export function BurndownChart({ chartData, sprintData, className }: BurndownChar
             </LineChart>
           </ResponsiveContainer>
         </ChartContainer>
+        </div>
         
         {/* 圖表說明 */}
         <div className="mt-4 text-sm text-muted-foreground">
