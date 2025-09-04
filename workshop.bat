@@ -53,7 +53,7 @@ call :health
 echo.
 echo 🎉 環境已就緒！
 echo 📱 前端: http://localhost:3000
-echo 🔧 .NET 後端: http://localhost:8001
+echo 🔧 .NET 後端: http://localhost:8001/swagger
 goto end
 
 :workshop-stop
