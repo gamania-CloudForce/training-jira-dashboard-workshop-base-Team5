@@ -25,6 +25,7 @@ import { ChartContainer } from "@/components/ui/chart"
 import { useDashboard } from "@/hooks/use-dashboard"
 import { SprintBurndownContainer } from "@/components/sprint-burndown-container"
 import { MemberContributionCard } from "./member-contribution-card"
+import StatusDistributionChart from "./status-distribution-chart"
 import { useTeamContribution } from "@/hooks/use-team-contribution"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -375,6 +376,17 @@ export default function JiraDashboard() {
               請選擇一個具體的 Sprint 查看團隊成員貢獻
             </div>
           )}
+        </div>
+
+        {/* Status Distribution Section - US-103 */}
+        <div className="space-y-4">
+          <StatusDistributionChart 
+            sprintName={selectedSprint === 'All' ? undefined : selectedSprint}
+            onStatusFilter={(status) => {
+              // 這裡可以實作狀態過濾邏輯，比如跳轉到明細表格並過濾特定狀態
+              console.log(`過濾狀態: ${status}`);
+            }}
+          />
         </div>
 
       </main>

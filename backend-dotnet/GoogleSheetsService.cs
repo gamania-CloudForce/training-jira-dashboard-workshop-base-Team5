@@ -848,42 +848,27 @@ public class GoogleSheetsService
             }
         }
 
-        // 預定義的 9 個狀態 (根據 table-schema.md)
+        // 根據 table-schema.md 預定義的 9 個狀態
         var predefinedStatuses = new List<string>
         {
-            "待辦", "已評估", "進行中", "等待中", "開發完成",
-            "待驗證", "測試中", "準備發布", "完成"
+            "Backlog", "Evaluated", "To Do", "In Progress", "Waiting",
+            "Ready to Verify", "Done", "Invalid", "Routine"
         };
 
-        // 映射實際狀態到預定義狀態 (根據實際資料調整)
-        var statusMapping = new Dictionary<string, string>
-        {
-            ["Backlog"] = "待辦",
-            ["Evaluated"] = "已評估", 
-            ["To Do"] = "待辦",
-            ["In Progress"] = "進行中",
-            ["Waiting"] = "等待中",
-            ["Dev Completed"] = "開發完成",
-            ["Ready to Verify"] = "待驗證",
-            ["Testing"] = "測試中",
-            ["Ready to Release"] = "準備發布",
-            ["Done"] = "完成",
-            ["Invalid"] = "其他",
-            ["Routine"] = "其他"
-        };
-
-        var mappedStatusCounts = new Dictionary<string, int>();
+        var finalStatusCounts = new Dictionary<string, int>();
         var unknownStatusCount = 0;
         var hasUnknownStatuses = false;
 
-        // 映射狀態並聚合未知狀態
+        // 處理預定義狀態
+        foreach (var status in predefinedStatuses)
+        {
+            finalStatusCounts[status] = statusCounts.GetValueOrDefault(status, 0);
+        }
+
+        // 處理未知狀態，聚合到"其他"
         foreach (var kvp in statusCounts)
         {
-            if (statusMapping.TryGetValue(kvp.Key, out var mappedStatus))
-            {
-                mappedStatusCounts[mappedStatus] = mappedStatusCounts.GetValueOrDefault(mappedStatus, 0) + kvp.Value;
-            }
-            else
+            if (!predefinedStatuses.Contains(kvp.Key))
             {
                 unknownStatusCount += kvp.Value;
                 hasUnknownStatuses = true;
@@ -893,23 +878,21 @@ public class GoogleSheetsService
         // 如果有未知狀態，加入"其他"類別
         if (unknownStatusCount > 0)
         {
-            mappedStatusCounts["其他"] = unknownStatusCount;
-            if (!predefinedStatuses.Contains("其他"))
-            {
-                predefinedStatuses.Add("其他");
-            }
+            finalStatusCounts["其他"] = unknownStatusCount;
+            predefinedStatuses.Add("其他");
         }
 
-        // 找出瓶頸狀態 (佔比最高的狀態)
-        var maxCount = mappedStatusCounts.Values.DefaultIfEmpty(0).Max();
-        var bottleneckStatus = mappedStatusCounts.FirstOrDefault(kvp => kvp.Value == maxCount).Key;
+        // 找出瓶頸狀態 (佔比最高的狀態，排除 0 值)
+        var nonZeroCounts = finalStatusCounts.Where(kvp => kvp.Value > 0);
+        var maxCount = nonZeroCounts.Any() ? nonZeroCounts.Max(kvp => kvp.Value) : 0;
+        var bottleneckStatus = nonZeroCounts.FirstOrDefault(kvp => kvp.Value == maxCount).Key;
 
         var distributions = new List<StatusDistributionData>();
 
-        // 按照預定義順序創建分佈資料
+        // 按照預定義順序創建分佈資料，確保所有狀態都包含（包括 0 值）
         foreach (var status in predefinedStatuses)
         {
-            var count = mappedStatusCounts.GetValueOrDefault(status, 0);
+            var count = finalStatusCounts.GetValueOrDefault(status, 0);
             var percentage = totalCount > 0 ? Math.Round((double)count / totalCount * 100, 1) : 0;
             var isBottleneck = status == bottleneckStatus && count > 0;
 
